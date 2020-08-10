@@ -13,8 +13,10 @@
   (left [this])
   (right [this])
   (value [this])
+  (current [this])
   (inspect [this])
-  (get-nth [this n]))
+  ;;(get-nth [this n])
+  )
 ;;(take-while [1 [2.1 2.2] 3])
 
 (declare right-fn)

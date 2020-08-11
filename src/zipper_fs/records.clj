@@ -294,8 +294,33 @@
                    up-node down-node])
 
 
-(declare make-dir-leafs)
-(declare make-node-leaf)
+
+(defn dir-leafs
+  "Returns a list of fs objects wrapped in a FsLeaf record. Note, the parent or :up-node is not returned."
+  [dir-path]
+  (println "Getting ls dir for " (str dir-path))
+  (let [dir-f (fs/file dir-path)
+        leafs (map #(FsLeaf. %)
+                   (fs/list-dir dir-f))]
+    leafs))
+
+(defn make-fs-node
+  "Takes a path, which is a file or directory, and builds the left and rights (by listing the parent directory),
+  and sets the current to the path's corresponding FsLeaf."
+  [path]
+  (let [[left-leafs cur-leaf right-leafs] (loop [lvs   (dir-leafs (fs/parent path))
+                                                 lefts (list)]
+                                            (if (or (nil? lvs)
+                                                    (= path
+                                                       (:value (first lvs))))
+                                              [lefts (first lvs) (rest lvs)]
+                                              (recur (next lvs) (conj lefts (first lvs)))))]
+    (FsNode. cur-leaf
+             left-leafs
+             right-leafs
+             nil
+             nil)))
+
 
 (extend-protocol p/NodeProtocol
   FsNode
@@ -310,109 +335,52 @@
       ;; need to load into memory
       (let [f (:value (:current this))
             p (fs/parent f)]
-        (println "Parent " p)
         (if (and p
                  (fs/directory? p))
-          ;; todo, need to add the leafs, and insert current
-          (-> (make-node-leaf p)
-              (assoc :down-node (map->FsNode this))
-              ;;cursor-up
-              ;;map->FsNode
-              )
-          #_(let [p (fs/parent f)
-                leafs (make-dir-leafs )]
-            
-            (FsNode. (first leafs)
-                     (list);;left
-                     (rest leafs);;right
-                     (map->FsNode this);; up
-                     nil;;down
-                     ))
-
-
-          )))
-    
-    
-    ;;(cursor-up this)
-    ;;(make-fs-node (fs/parent (fs/parent (:value (:current this)))))
-    ;;(fs/parent (:value (:current this)))
-    )
+          (-> (make-fs-node p)
+              (assoc :down-node (map->FsNode this)))))))
   (down [this]
     (if (:down-node this)
       (map->FsNode (cursor-down this));; already have it
       (let [f (:value (:current this)) ]
         (if (fs/directory? f)
-          (let [leafs  (make-dir-leafs f)]
+          (let [leafs  (dir-leafs f)]
             (FsNode. (first leafs)
                      (list);;left
                      (rest leafs);;right
                      (map->FsNode this);; up
                      nil;;down
-                     ))
+                     )))))))
 
-
-            )))))
-
-
-(defn make-dir-leafs
-  ""
-  [dir-path]
-  (println "Getting ls dir for " (str dir-path))
-  (let [dir-f  (fs/file dir-path)
-        leafs  (map #(FsLeaf. %)
-                    (fs/list-dir dir-f))]
-    leafs
-   ))
-
-(defn make-node-leaf
-  "Takes a path, which is a file or directory, and builds the left and rights,
-  and sets the current to the path's corresponding FsLeaf"
-  [path]
-  (let [dir-leafs                         (make-dir-leafs (fs/parent path))
-        [left-leafs cur-leaf right-leafs] (loop [lvs   dir-leafs
-                                                 lefts (list)]
-                                            (if (or (nil? lvs)
-                                                    (= path
-                                                       (:value (first lvs))))
-                                              [lefts (first lvs) (rest lvs)]
-                                              (recur (next lvs) (conj lefts (first lvs)))))]
-    (FsNode. cur-leaf
-             left-leafs
-             right-leafs
-             nil
-             nil)))
 
 
 
 
 (comment
-  ;; (fs/file fs/*cwd*)
-  (-> ;;(make-dir-node fs/*cwd*)
-    ;;(FsNode. (FsLeaf. (fs/file fs/*cwd*) ) (list) (list) nil nil)
-    (make-node-leaf fs/*cwd*)
-    p/down
-    p/right
-    p/right
-    p/down
-    p/down
-    p/right
-    
+  (->(make-fs-node fs/*cwd*)
+     p/down
+     p/right
+     p/right
+     p/down
+     p/down
+     p/right
+     
 
-    ;; can go up and wont list director again!
-    p/up
-    p/up
-    p/down
-    p/down
-    )
+     ;; can go up and wont list director again!
+     p/up
+     p/up
+     p/down
+     p/down
+     )
 
   (-> ;;(FsNode. (FsLeaf. (fs/file fs/*cwd*) ) (list) (list) nil nil)
-      (make-node-leaf fs/*cwd*);
-      ;;p/up
+      (make-fs-node fs/*cwd*);
+      p/up
       ;;p/right
       ;;p/down
       ;;p/right
       ;;(clojure.pprint/pprint )
-      p/current
+      ;;p/current
     )
 
   )

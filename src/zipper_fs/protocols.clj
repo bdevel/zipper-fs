@@ -1,10 +1,117 @@
 (ns zipper-fs.protocols)
 
-;; [1 2 [3.0 3.1] 4 [5.0 [5.1 5.2 5.3]]]???
-;; {:folder "" :contents [{:file_name ""} 
-;;{:file_name ""} 
-;; {:folder "" :contents [{:file_name ""} ]}
-;; [ 1 2 3 4 5 6 7 8 9]
+
+(comment 
+  ;; Basic structure of the zipper.
+  ;; This is a Node because it is connected to multiple leafs. It is used for navigating.
+  ;; :current is a Leaf which holds the value and any meta information required.
+  ;; :left and :right are lists which hold items on the same level as :current. Can be lazy.
+  ;; :down If :current is a container (a directory, list, vector, etc), you can step down into it.
+  ;;  The [:down :current] is the selected item, and is typically the first item in the container.
+  ;; Importantly (if building a custom zipper), Nodes must only have one reference to a Leaf. These are one sided relationships.
+  ;; Down-nodes do not need to refer back to up-nodes. Similarly, :right nodes should not refer to their :left node.
+  {:current "pictures"
+   :left    '("documents" "music")
+   :right   '("programs" "videos")
+   :down    {:current "beach.jpg"
+             :left    (list "cheese.jpg")
+             :right   (list "dog.jpg" "frog.jpg")}})
+
+(defn cursor-right
+  "Will conj :current into :left-nodes and (first :right-nodes) becomes :current and :right-nodes is (rest :right-nodes)"
+  [c]
+  ;; TODO, will keep going right into nil land, stop it?
+  (if (not (empty? (:right-nodes c)))
+    (-> c
+        (update :left-nodes conj (:current c))
+        (assoc :current (first (:right-nodes c)))
+        (assoc :right-nodes (rest (:right-nodes c))))))
+
+(defn cursor-left
+  "Will conj :current into :right-nodes and (first :left-nodes) becomes :current and :left-nodes is (rest :left-nodes)"
+  [c]
+  ;; TODO, will keep going into nil land, stop it?
+  (if (not (empty? (:left-nodes c)))
+    (-> c
+        (update :right-nodes conj (:current c))
+        (assoc :current (first (:left-nodes c)))
+        (assoc :left-nodes (rest (:left-nodes c))))))
+
+(defn cursor-up
+  ":current becomes :up-node and :down-node becomes the (dissoc c :up-node) because the :down-node doesn't need a reference to the :up-node."
+  [c]
+  (if (:up-node c)
+    (-> (:up-node c)
+        ;;(update :right-nodes conj (:current c))
+        ;;(assoc :current (first (:left-nodes c)))
+        ;;(assoc :left-nodes (rest (:left-nodes c)))
+        (assoc :down-node (dissoc c :up-node)) ;; same as c but without up
+        )))
+
+(defn cursor-down
+  ":down-node becomes :current. :up-node becomes old current without a :down-node"
+  [c]
+  (if (:down-node c)
+    (-> (:down-node c)
+        ;;(update :right-nodes conj (:current c))
+        ;;(assoc :current (first (:left-nodes c)))
+        ;;(assoc :left-nodes (rest (:left-nodes c)))
+        (assoc :up-node (dissoc c :down-node))
+        )))
+
+(comment
+  (-> {:current     "c"
+       :left-nodes  '("b" "a")
+       :right-nodes '("d" "e")
+       :up-node     {:current     3
+                     :left-nodes  '(2 1 0)
+                     :right-nodes '(4 5)
+                     :up-node     nil}
+       :down-node   nil}
+      
+      ;;cursor-right
+      ;;cursor-right
+      ;;cursor-right
+      ;;cursor-left
+      ;;cursor-left
+      cursor-left
+      cursor-up
+      cursor-left
+      cursor-right
+      cursor-down
+      )
+  
+  )
+
+
+(defn insert-left
+  "Inserts item."
+  [c c2]
+  (update c :left-nodes conj c2))
+
+(defn insert-right
+  ""
+  [c c2]
+  (update c :right-nodes conj c2)
+  )
+
+(defn assoc-down
+  "Sets the :down-node"
+  [c c2]
+  (assoc c :down-node c2))
+
+
+(comment
+  (-> {:current    "c"
+       :left-nodes '()}
+      (insert-left "b")
+      (insert-right "d")
+      )
+  
+  )
+
+
+;;--------------------------------------------------------------------------------
 
 (defprotocol NodeProtocol 
   ""
@@ -15,144 +122,41 @@
   (value [this])
   (current [this])
   (inspect [this])
-  ;;(get-nth [this n])
   )
-;;(take-while [1 [2.1 2.2] 3])
 
-(declare right-fn)
-(defrecord Node 
-    [branch-items
-     offset])
+(defrecord Leaf [value
+                 properties])
 
-(defrecord VectorNode 
-    [branch-items
-     offset])
-
-(extend-protocol NodeProtocol 
-  VectorNode
-  (inspect [this] #_[(:value-node this)
-                   (:value-node (:up-node this))
-                   (:value-node (:down-node this))
-                   (:value-node (:left-node this))
-                   (:value-node (:right-node this))])
-  (value [this] (nth (:branch-items this) (:offset this)))
-  (right [this] (try (nth (:branch-items this) (inc (:offset this)))
-                     (VectorNode. (:branch-items this) 
-                                       (inc (:offset this)))
-                     (catch IndexOutOfBoundsException e nil)))
-
-  (left [this] (if (> (:offset this) 0)
-                  (VectorNode. (:branch-items this) 
-                         (dec (:offset this)))))
-
-  (up [this] #_(->Node (:value-node (:up-node this)) 
-                     (:up-node (:up-node this))          
-                     (loop [l (:left-node this)
-                            last-l nil]
-                       (if l
-                         (recur (:left-node l) l)
-                         last-l))
-                     (:left-node (:up-node this))
-                     (:right-node (:up-node this))))
-  (down [this] #_(->Node (:value-node (:down-node this)) 
-                       this
-                       (:down-node (:down-node this))
-                       (:left-node (:down-node this))
-                       (:right-node (:down-node this)))))
-
-(comment 
-  (->> (VectorNode. (range) 1000)
-       right
-       right
-       value)
-  
-  (take 10 (() range))
-)
-;; [1, [2.1,2,2], 3]
-
-;; #_(defn build-branch
-;;   ""
-;;   [original-items]
-;;   (loop [items original-items
-;;          previous-node nil
-;;          nodes []]
-;;     (if (empty? items)
-;;       (first (map-indexed (fn [i, n] (assoc n :right-node (nth nodes (inc i) nil))) nodes))
-;;       (let [i (first items)
-;;             n (Node. i nil nil previous-node nil)]
-;;         (recur (next items) n (conj nodes n))))))
-
-;; (defn build-lazy-branch
-;;   ""
-;;   [original-items]
-  
-;;   (let [xf (map #(Node. % nil nil nil))
-;;         f (fn [acc n])
-;;         #_(loop [items         original-items
-;;                        previous-node nil
-;;                        nodes         []]
-;;                   (if (empty? items)
-;;                     (first (map-indexed (fn [i, n] (assoc n :right-node (nth nodes (inc i) nil))) nodes))
-;;                     (let [i (first items)
-;;                           n (Node. i nil nil previous-node nil)]
-;;                       (recur (next items) n (conj nodes n)))))])
+(defrecord Node [current
+                 left-nodes right-nodes
+                 up-node down-node])
 
 
-;;   )
+(def base-implementation
+  {
+   :inspect (fn [this] this)
+   :current (fn [this] (:current this))
+   :value   (fn [this] (:value (:current this)))
+   :right   (fn [this] (cursor-right this))
+   :left    (fn [this] (cursor-left this))
+   :up      (fn [this] (cursor-up this))
+   :down    (fn [this] (cursor-down this))
+   })
 
-;; (comment
-;;   ;; [1 2 3 4]
-;;   (->> [1 2 3 4]
-;;        (build-branch)
-;;        (clojure.pprint/pprint))
-;;   (def right-sample-1 (Node. 1 nil nil nil
-;;                            (Node. 2 nil nil 1
-;;                                   (Node. 3 nil nil 2
-;;                                          (Node. 4 nil nil 3 nil)))))
-;;   (def right-sample-1 (let [n1  (Node. 1 nil nil nil nil)
-;;                             n2  (Node. 2 nil nil n1 nil)
-;;                             n3  (Node. 3 nil nil n2 nil)
-;;                             n4  (Node. 4 nil nil n3 nil)
-;;                             _ (println (:right-node n4) n4)
-;;                             nn3 (assoc n3 :right-node n4)
-;;                             _ (clojure.pprint/pprint nn3)
-;;                             nn2 (assoc n2 :right-node nn3)
-;;                             nn1 (assoc n1 :right-node nn2)]
-;;                         nn1))
-  
-;;   (-> right-sample-1
-;;       right
-;;       left
-;;       left
-;;       down
-;;       up
-;;       value)
-  
-;;   (clojure.pprint/pprint (right right-sample-2))
+(extend Node
+  NodeProtocol
+  base-implementation
+  )
 
-;;   ;;(take-while [1 [2.1 2.2] 3])
-;;   (last (take-while (comp not nil?) [1 2 3 nil]))
-
-;;   (def sample-2 (let [n1 (Node. 1 nil nil nil nil)
-                      
-;;                       n2 (Node. [] nil nil n1 nil)
-;;                       n2d (Node. 2.1 n2 nil nil nil)
-;;                       n2dr (Node. 2.2 n2 nil n2d nil)
-;;                       nn2d (assoc n2d :right-node n2dr)
-;;                       _ (println "nn2d" (inspect nn2d))
-;;                       n3  (Node. 3 nil nil n2 nil)
-;;                       nn2 (assoc n2 :right-node n3 :down-node nn2d)
-;;                       _ (println "nn2" (inspect nn2))
-;;                       nn1 (assoc n1 :right-node nn2)]
-;;                   nn1))
-;;   (clojure.pprint/pprint (-> sample-2
-;;                              right
-;;                              down
-;;                              right
-;;                              up
-;;                              ;;:down-node
-;;                              inspect
-;;                              ))
-;; )
+;; Same as
+#_(extend-protocol NodeProtocol
+  Node
+  (inspect [this] this)
+  (current [this] (:current this))
+  (value   [this] (:value (:current this)))
+  (right   [this] (cursor-right this))
+  (left    [this] (cursor-left this))
+  (up      [this]  (cursor-up this))
+  (down    [this] (cursor-down this)))
 
 

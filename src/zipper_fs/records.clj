@@ -118,17 +118,6 @@
 
 
 
-#_(def branch-node-implementation
-  {:right (fn [this] (BranchNode. ()
-                                  properties))
-   :left  (fn [this] )
-   :up  (fn [this] )
-   :down  (fn [this] )
-   :inspect  (fn [this] this)
-   :value  (fn [this] )
-   })
-
-
 (defrecord Leaf [value
                  properties])
 
@@ -146,86 +135,6 @@
   (left [this] (cursor-left this))
   (up [this]  (cursor-up this))
   (down [this] (cursor-down this)))
-
-
-(comment
-
-  (def n (Node. (Leaf. "a" {})
-                   (list )
-                   (list)
-                   nil
-                   nil))
-
-  (-> n
-      ;;p/current
-      (insert-right (Leaf. "b" {}))
-      ;;p/right
-      ;;(insert-right (Node. (Leaf. "(,,,)" {}) (list) (list) nil (Leaf. "c1" {}) ))
-      (insert-right (Leaf. "(,,,)" {})) ;;(Node.  (list) (list) nil (Leaf. "c1" {}) ))
-      p/right
-      (assoc-down (Node. (Leaf. "c1" {})
-                         (list ) (list)
-                         nil nil ))
-      p/down
-      p/current
-      ;;p/down
-      clojure.pprint/pprint
-      )
-
-  
-
-  {:current #_StringNode {:value "c"
-                          :properties #_PropertyNode {:last-modified 100
-                                                      :user "Tyler"
-                                                      ;; :length 1  defined on the StringNode protocol
-                                                      }}
-   :left    '("b" "a")
-   :right   '("d" "e")
-   :up      nil
-   :down    {:current #_StringNode {:value      "c1"
-                                    :properties #_PropertyNode {:last-modified 100
-                                                                :user          "Tyler"
-                                                                ;; :length 1  defined on the StringNode protocol
-                                                                }}
-             :left    '()
-             :right   '("c2"
-                        {:current "c3" :down {,,,}}
-                        ,,,)
-             }}
-  
-  
-
-
-  ;; Down goes in to the map
-  ;; Left and right over the keys
-  ;; down into the (get :offset) value
-  ;; might be either a value or a
-  (defrecord HashmapNode [map offset])
-  (extend-protocol p/NodeProtocol 
-    HashmapNode
-    (inspect [this] this)
-
-    (value [this] (:dmap this))
-    (right [this] (try (nth (fs/list-dir (:path this)) (inc (:offset this)))
-                       (DirectoryNode. (:path this) 
-                                       (inc (:offset this)))
-                       (catch IndexOutOfBoundsException e nil)))
-
-    (left [this] (if (> (:offset this) 0)
-                   (DirectoryNode. (:path this) 
-                                   (dec (:offset this)))))
-
-    (up [this] (:up-node this))
-
-    (down [this] (get (:dmap this)
-                      (nth (keys (:dmap this)) (:offset this)))))
-
-
-  )
-
-
-
-
 
 
 ;;================================================================================

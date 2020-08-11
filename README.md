@@ -1,10 +1,33 @@
 # zipper-fs
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure library for navigating a file system using zipper commands `up`,
+`down`, `left` and `right`. 
 
 ## Usage
 
-FIXME
+``` clojure
+(ns zipper-fs.demo
+  (:require [zipper-fs.protocols :as p]
+            [me.raynes.fs :as fs]))            
+(-> (zipper-fs.records/make-fs-node fs/*cwd*)
+     p/down
+     
+     p/right
+     p/right
+     
+     p/down
+     p/down
+     p/right
+
+     ;; can go back up and it wont need to read the directory list again
+     p/up
+     p/up
+     p/up
+     
+     p/current
+     p/value
+     )
+```
 
 ## License
 

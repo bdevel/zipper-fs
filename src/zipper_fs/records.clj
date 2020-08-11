@@ -5,81 +5,26 @@
   (:require [zipper-fs.protocols :as p]
             [me.raynes.fs :as fs]))
 
-;; (defrecord DirectoryNode [path offset])
-
-;; (extend-protocol p/NodeProtocol 
-;;   DirectoryNode
-;;   (inspect [this] this)
-
-;;   (value [this] (nth (fs/list-dir (:path this)) (:offset this)))
-;;   (right [this] (try (nth (fs/list-dir (:path this)) (inc (:offset this)))
-;;                      (DirectoryNode. (:path this) 
-;;                                      (inc (:offset this)))
-;;                      (catch IndexOutOfBoundsException e nil)))
-
-;;   (left [this] (if (> (:offset this) 0)
-;;                  (DirectoryNode. (:path this) 
-;;                                  (dec (:offset this)))))
-
-;;   (up [this] (DirectoryNode. 
-;;                (fs/parent (:path this))
-;;                (.indexOf (fs/list-dir (fs/parent (:path this))) (:path this))))
-
-;;   (down [this] (if (fs/directory? (p/value this))
-;;                  (DirectoryNode. (p/value this) 0)
-;;                  nil)))
-
-;; ;; [1 [2.1 2.2] 3]
-;; (comment
-;;   (fs/base-name (fs/file fs/*cwd*))
-;;   (.indexOf (fs/list-dir (fs/parent fs/*cwd*)) fs/*cwd*)
-;;   (nth (fs/list-dir fs/*cwd*) 200)
-;;   (->> (DirectoryNode. fs/*cwd* 0)
-;;        p/right
-;;        p/right
-;;        p/right
-;;        p/down
-;;        p/up
-;;        p/inspect
-;;        )
-;; )
-
-
-
-
-
 ;;(defrecord PropertiesNode [up-node properties])
 
 (comment 
-  ;;Given [a b c d e]
-  ;; Cursor on "c"
-  {:v "c"
-   :r {:v "d"
-       :r {:v "e"
-           :d {:v "e2"}}}
-   :l {:v :b
-       :l {:v "a"}}}
-  
-  ;; Move Right to "d"
-  {:v "d"
-   :d {:v "d2"}
-   :r {:v "e"
-       :d {:v "e2"}}
-   :l {:v "c"
-       :l {:v :b
-           :l {:v "a"}}}}
-
-  
-  ;; Using a list
-  {:current "c"
-   :left    '("b" "a")
-   :right   '("d" "e")
-   :up      nil}
-
-  )
+  ;; Basic structure of the zipper.
+  ;; This is a Node because it is connected to multiple leafs. It is used for navigating.
+  ;; :current is a Leaf which holds the value and any meta information required.
+  ;; :left and :right are lists which hold items on the same level as :current. Can be lazy.
+  ;; :down If :current is a container (a directory, list, vector, etc), you can step down into it.
+  ;;  The [:down :current] is the selected item, and is typically the first item in the container.
+  ;; Importantly (if building a custom zipper), Nodes must only have one reference to a Leaf. These are one sided relationships.
+  ;; Down-nodes do not need to refer back to up-nodes. Similarly, :right nodes should not refer to their :left node.
+  {:current "pictures"
+   :left    '("documents" "music")
+   :right   '("programs" "videos")
+   :down      {:current "beach.jpg"
+               :left (list "cheese.jpg")
+               :right (list "dog.jpg" "frog.jpg")}})
 
 (defn cursor-right
-  ""
+  "Will conj :current into :left-nodes and (first :right-nodes) becomes :current and :right-nodes is (rest :right-nodes)"
   [c]
   ;; TODO, will keep going right into nil land, stop it?
   (if (not (empty? (:right-nodes c)))
@@ -89,7 +34,7 @@
         (assoc :right-nodes (rest (:right-nodes c))))))
 
 (defn cursor-left
-  ""
+  "Will conj :current into :right-nodes and (first :left-nodes) becomes :current and :left-nodes is (rest :left-nodes)"
   [c]
   ;; TODO, will keep going into nil land, stop it?
   (if (not (empty? (:left-nodes c)))
@@ -99,7 +44,7 @@
         (assoc :left-nodes (rest (:left-nodes c))))))
 
 (defn cursor-up
-  ""
+  ":current becomes :up-node and :down-node becomes the (dissoc c :up-node) because the :down-node doesn't need a reference to the :up-node."
   [c]
   (if (:up-node c)
     (-> (:up-node c)
@@ -110,7 +55,7 @@
         )))
 
 (defn cursor-down
-  ""
+  ":down-node becomes :current. :up-node becomes old current without a :down-node"
   [c]
   (if (:down-node c)
     (-> (:down-node c)
@@ -142,7 +87,6 @@
       cursor-down
       )
   
-  
   )
 
 
@@ -152,13 +96,13 @@
   (update c :left-nodes conj c2))
 
 (defn insert-right
-  "Inserts item, and moves cursor to the item just inserted."
+  ""
   [c c2]
   (update c :right-nodes conj c2)
   )
 
 (defn assoc-down
-  "Sets the  :down-node"
+  "Sets the :down-node"
   [c c2]
   (assoc c :down-node c2))
 
@@ -353,9 +297,6 @@
                      )))))))
 
 
-
-
-
 (comment
   (->(make-fs-node fs/*cwd*)
      p/down
@@ -389,3 +330,42 @@
 
 
 
+;; Original implementation works, but not as good
+;; (defrecord DirectoryNode [path offset])
+
+;; (extend-protocol p/NodeProtocol 
+;;   DirectoryNode
+;;   (inspect [this] this)
+
+;;   (value [this] (nth (fs/list-dir (:path this)) (:offset this)))
+;;   (right [this] (try (nth (fs/list-dir (:path this)) (inc (:offset this)))
+;;                      (DirectoryNode. (:path this) 
+;;                                      (inc (:offset this)))
+;;                      (catch IndexOutOfBoundsException e nil)))
+
+;;   (left [this] (if (> (:offset this) 0)
+;;                  (DirectoryNode. (:path this) 
+;;                                  (dec (:offset this)))))
+
+;;   (up [this] (DirectoryNode. 
+;;                (fs/parent (:path this))
+;;                (.indexOf (fs/list-dir (fs/parent (:path this))) (:path this))))
+
+;;   (down [this] (if (fs/directory? (p/value this))
+;;                  (DirectoryNode. (p/value this) 0)
+;;                  nil)))
+
+;; ;; [1 [2.1 2.2] 3]
+;; (comment
+;;   (fs/base-name (fs/file fs/*cwd*))
+;;   (.indexOf (fs/list-dir (fs/parent fs/*cwd*)) fs/*cwd*)
+;;   (nth (fs/list-dir fs/*cwd*) 200)
+;;   (->> (DirectoryNode. fs/*cwd* 0)
+;;        p/right
+;;        p/right
+;;        p/right
+;;        p/down
+;;        p/up
+;;        p/inspect
+;;        )
+;; )

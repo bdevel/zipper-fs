@@ -13,7 +13,7 @@ A Clojure library for navigating a file system using zipper commands `up`,
      p/down
      
      p/right
-     p/right
+     p/left
      
      p/down
      p/down
@@ -24,14 +24,14 @@ A Clojure library for navigating a file system using zipper commands `up`,
      p/up
      p/up
      
-     p/current
-     p/value
+     p/current ;; returns a FsLeaf
+     ;; p/value ;; returns a fs/file
      )
 ```
 
 ## License
 
-Copyright © 2020 FIXME
+Copyright © 2020
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at

@@ -1,4 +1,7 @@
 (ns zipper-fs.records
+  "Termonology:
+  Node: A zipper structure with :left-nodes, :right-nodes, :up-node, :down-node.
+  Leaf: A container for a value. It doesn't know what it's neighbors are. Only knows of itself."
   (:require [zipper-fs.protocols :as p]
             [me.raynes.fs :as fs]))
 
@@ -181,6 +184,7 @@
    :value  (fn [this] )
    })
 
+
 (defrecord Leaf [value
                  properties])
 
@@ -198,9 +202,6 @@
   (left [this] (cursor-left this))
   (up [this]  (cursor-up this))
   (down [this] (cursor-down this)))
-
-
-
 
 
 (comment
@@ -292,7 +293,9 @@
                    left-nodes right-nodes
                    up-node down-node])
 
-(declare make-fs-node)
+
+(declare make-dir-leafs)
+(declare make-node-leaf)
 
 (extend-protocol p/NodeProtocol
   FsNode
@@ -302,39 +305,115 @@
   (right [this] (cursor-right this))
   (left [this] (cursor-left this))
   (up [this]
-    (cursor-up this)
+    (if (:up-node this)
+      (map->FsNode (cursor-up this));; already exists, use that.
+      ;; need to load into memory
+      (let [f (:value (:current this))
+            p (fs/parent f)]
+        (println "Parent " p)
+        (if (and p
+                 (fs/directory? p))
+          ;; todo, need to add the leafs, and insert current
+          (-> (make-node-leaf p)
+              (assoc :down-node (map->FsNode this))
+              ;;cursor-up
+              ;;map->FsNode
+              )
+          #_(let [p (fs/parent f)
+                leafs (make-dir-leafs )]
+            
+            (FsNode. (first leafs)
+                     (list);;left
+                     (rest leafs);;right
+                     (map->FsNode this);; up
+                     nil;;down
+                     ))
+
+
+          )))
+    
+    
+    ;;(cursor-up this)
     ;;(make-fs-node (fs/parent (fs/parent (:value (:current this)))))
     ;;(fs/parent (:value (:current this)))
     )
   (down [this]
-    ;;(cursor-down this)
-    (-> (make-fs-node (:value (:current this)))
-        (assoc :up-node (dissoc this :down-node)))
-    ))
+    (if (:down-node this)
+      (map->FsNode (cursor-down this));; already have it
+      (let [f (:value (:current this)) ]
+        (if (fs/directory? f)
+          (let [leafs  (make-dir-leafs f)]
+            (FsNode. (first leafs)
+                     (list);;left
+                     (rest leafs);;right
+                     (map->FsNode this);; up
+                     nil;;down
+                     ))
 
 
-(defn make-fs-nod
+            )))))
+
+
+(defn make-dir-leafs
   ""
+  [dir-path]
+  (println "Getting ls dir for " (str dir-path))
+  (let [dir-f  (fs/file dir-path)
+        leafs  (map #(FsLeaf. %)
+                    (fs/list-dir dir-f))]
+    leafs
+   ))
+
+(defn make-node-leaf
+  "Takes a path, which is a file or directory, and builds the left and rights,
+  and sets the current to the path's corresponding FsLeaf"
   [path]
-  (let [leafs (map #(FsLeaf. %) (fs/list-dir path))]
-    (FsNode. (first leafs)
-             (list)
-             (rest leafs)
+  (let [dir-leafs                         (make-dir-leafs (fs/parent path))
+        [left-leafs cur-leaf right-leafs] (loop [lvs   dir-leafs
+                                                 lefts (list)]
+                                            (if (or (nil? lvs)
+                                                    (= path
+                                                       (:value (first lvs))))
+                                              [lefts (first lvs) (rest lvs)]
+                                              (recur (next lvs) (conj lefts (first lvs)))))]
+    (FsNode. cur-leaf
+             left-leafs
+             right-leafs
              nil
              nil)))
 
 
+
+
 (comment
-  (-> (make-fs-node fs/*cwd*)
-      p/right
-      p/right
-      p/down
-      p/down
-      p/up
+  ;; (fs/file fs/*cwd*)
+  (-> ;;(make-dir-node fs/*cwd*)
+    ;;(FsNode. (FsLeaf. (fs/file fs/*cwd*) ) (list) (list) nil nil)
+    (make-node-leaf fs/*cwd*)
+    p/down
+    p/right
+    p/right
+    p/down
+    p/down
+    p/right
+    
+
+    ;; can go up and wont list director again!
+    p/up
+    p/up
+    p/down
+    p/down
+    )
+
+  (-> ;;(FsNode. (FsLeaf. (fs/file fs/*cwd*) ) (list) (list) nil nil)
+      (make-node-leaf fs/*cwd*);
       ;;p/up
-      ;; p/up
+      ;;p/right
+      ;;p/down
+      ;;p/right
+      ;;(clojure.pprint/pprint )
       p/current
-      )
+    )
 
   )
 

@@ -80,6 +80,7 @@
 
 
 (comment
+  
   (->(make-fs-node fs/*cwd*)
      p/down
      p/right
@@ -98,15 +99,15 @@
 
   (-> (make-fs-node fs/*cwd*);
       p/up
-      p/up
-      p/up
-      p/up
-      p/up
+      ;; p/up
+      ;; p/up
+      ;; p/up
+      ;; p/up
       ;;p/right
       ;;p/down
       ;;p/right
-      ;;(clojure.pprint/pprint )
-      p/value
+      (clojure.pprint/pprint )
+      ;;p/value
       )
 
   (-> (make-fs-node "/")

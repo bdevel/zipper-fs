@@ -28,7 +28,7 @@
         (assoc :right-nodes (rest (:right-nodes c))))))
 
 (defn cursor-left
-  "Will conj :current into :right-nodes and (first :left-nodes) becomes :current and :left-nodes is (rest :left-nodes)"
+  "Will conj :current into :right-nodes and (last :left-nodes) becomes :current and :left-nodes is (rest :left-nodes)"
   [c]
   ;; TODO, will keep going into nil land, stop it?
   (if (not (empty? (:left-nodes c)))
@@ -60,25 +60,24 @@
         )))
 
 (comment
-  (-> {:current     "c"
-       :left-nodes  '("b" "a")
-       :right-nodes '("d" "e")
-       :up-node     {:current     3
-                     :left-nodes  '(2 1 0)
-                     :right-nodes '(4 5)
-                     :up-node     nil}
-       :down-node   nil}
+  (-> {:current "pictures"
+       :left-nodes    '("documents" "music")
+       :right-nodes   '("programs" "videos")
+       :down-node    {:current "beach.jpg"
+                 :left-nodes    (list "cheese.jpg")
+                 :right-nodes   (list "dog.jpg" "frog.jpg")}}
       
       ;;cursor-right
       ;;cursor-right
-      ;;cursor-right
-      ;;cursor-left
-      ;;cursor-left
-      cursor-left
-      cursor-up
-      cursor-left
       cursor-right
-      cursor-down
+      cursor-left
+      ;;cursor-left
+      ;;cursor-left
+      ;;cursor-up
+      ;;cursor-down
+      ;;cursor-left
+      ;;cursor-right
+      clojure.pprint/pprint
       )
   
   )

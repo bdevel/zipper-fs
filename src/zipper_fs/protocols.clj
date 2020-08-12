@@ -10,21 +10,36 @@
   ;;  The [:down :current] is the selected item, and is typically the first item in the container.
   ;; Importantly (if building a custom zipper), Nodes must only have one reference to a Leaf. These are one sided relationships.
   ;; Down-nodes do not need to refer back to up-nodes. Similarly, :right nodes should not refer to their :left node.
-  {:current "pictures"
-   :left    '("documents" "music")
-   :right   '("programs" "videos")
-   :down    {:current "beach.jpg"
-             :left    (list "cheese.jpg")
-             :right   (list "dog.jpg" "frog.jpg")}})
+  ;; In the Files directory
+  {:up-node   {:current "Files" ,,, }
+   :current   "pictures"
+   :down-node {:current     "beach.jpg"
+               :left-nodes  (list "cheese.jpg")
+               :right-nodes (list "dog.jpg" "frog.jpg")}
+
+   :left-nodes  '()
+   :right-nodes '({:current "music" :down-node (list "jazz.mp3"
+                                                     "rock.mp3")}
+                  {:current "programs" :down-node (list "start.exe"
+                                                        "worker.exe")})
+   }
+
+  )
+
+
+
 
 (defn cursor-right
   "Will conj :current into :left-nodes and (first :right-nodes) becomes :current and :right-nodes is (rest :right-nodes)"
   [c]
   ;; TODO, will keep going right into nil land, stop it?
   (if (not (empty? (:right-nodes c)))
-    (-> c
-        (update :left-nodes conj (:current c))
-        (assoc :current (first (:right-nodes c)))
+    (-> (first (:right-nodes c))
+        (assoc :up-node (:up-node c))
+        (assoc :left-nodes (conj (:left-nodes c) (-> c
+                                                     (dissoc :right-nodes
+                                                             :left-nodes
+                                                             :up-node))))
         (assoc :right-nodes (rest (:right-nodes c))))))
 
 (defn cursor-left
@@ -32,7 +47,14 @@
   [c]
   ;; TODO, will keep going into nil land, stop it?
   (if (not (empty? (:left-nodes c)))
-    (-> c
+    (-> (first (:left-nodes c))
+        (assoc :up-node (:up-node c))
+        (assoc :right-nodes (conj (:right-nodes c) (-> c
+                                                     (dissoc :right-nodes
+                                                             :left-nodes
+                                                             :up-node))))
+        (assoc :left-nodes (rest (:left-nodes c))))
+    #_(-> c
         (update :right-nodes conj (:current c))
         (assoc :current (first (:left-nodes c)))
         (assoc :left-nodes (rest (:left-nodes c))))))
@@ -60,17 +82,27 @@
         )))
 
 (comment
-  (-> {:current "pictures"
-       :left-nodes    '("documents" "music")
-       :right-nodes   '("programs" "videos")
+  (-> {:up-node      {:current "Files" ,,, }
+       :current "pictures"
        :down-node    {:current "beach.jpg"
-                 :left-nodes    (list "cheese.jpg")
-                 :right-nodes   (list "dog.jpg" "frog.jpg")}}
+                      :left-nodes    (list "cheese.jpg")
+                      :right-nodes   (list "dog.jpg" "frog.jpg")}
+
+       :left-nodes  '()
+       :right-nodes '({:current "music" :down-node {:current "jazz.mp3"
+                                                    :right-nodes '("rock.mp3")}}
+                {:current "programs" :down-node (list "start.exe"
+                                                      "worker.exe")})
+       }
       
       ;;cursor-right
       ;;cursor-right
       cursor-right
+      cursor-down
+      cursor-up
       cursor-left
+      cursor-down
+      ;;cursor-left
       ;;cursor-left
       ;;cursor-left
       ;;cursor-up
@@ -79,6 +111,8 @@
       ;;cursor-right
       clojure.pprint/pprint
       )
+
+
   
   )
 

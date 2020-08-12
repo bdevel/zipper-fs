@@ -9,20 +9,22 @@
 ;;================================================================================
 
 
-(defrecord FsLeaf [value])
+(defrecord FsEntity [value])
 
 (defrecord FsNode [current
-                   left-nodes right-nodes
-                   up-node down-node])
+                   left-nodes
+                   right-nodes
+                   up-node
+                   down-node])
 
 
 
-(defn dir-leafs
+(defn dir-nodes
   "Returns a list of fs objects wrapped in a FsLeaf record. Note, the parent or :up-node is not returned."
   [dir-path]
   (println "Getting ls dir for " (str dir-path))
   (let [dir-f (fs/file dir-path)
-        leafs (map #(FsLeaf. %)
+        leafs (map #(FsNode. (FsEntity. %) nil nil nil nil)
                    (fs/list-dir dir-f))]
     leafs))
 
@@ -32,20 +34,20 @@
   [path]
   
   (if-let [parent-f (fs/parent path)]
-    (let [[cur-leaf left-leafs right-leafs] (loop [lvs   (dir-leafs parent-f)
+    (let [[cur-leaf left-leafs right-leafs] (loop [lvs   (dir-nodes parent-f)
                                                    lefts (list)]
                                               (if (or (nil? lvs)
                                                       (= path
-                                                         (:value (first lvs))))
+                                                         (:value (:current (first lvs)))))
                                                 [(first lvs) lefts (rest lvs)]
                                                 (recur (next lvs) (conj lefts (first lvs)))))]
-           (FsNode. cur-leaf
+      (FsNode. (:current cur-leaf ) ;; get the fs entity 
                     left-leafs
                     right-leafs
                     nil
                     nil))
     ;; no parent-f, so must be root /
-    (FsNode. (FsLeaf. (fs/file path))
+    (FsNode. (FsEntity. (fs/file path)) ;; (FsNode.  nil nil nil nil)
              (list);;left
              (list) ;;right
              nil;; up
@@ -69,8 +71,8 @@
                        (map->FsNode (p/cursor-down this));; already have it
                        (let [f (:value (:current this)) ]
                          (if (fs/directory? f)
-                           (let [leafs (dir-leafs f)]
-                             (FsNode. (first leafs)
+                           (let [leafs (dir-nodes f)]
+                             (FsNode. (:current (first leafs)) ;; TODO, same entity?
                                       (list);;left
                                       (rest leafs);;right
                                       (map->FsNode this);; up
@@ -98,17 +100,29 @@
      )
 
   (-> (make-fs-node fs/*cwd*);
-      p/up
-      ;; p/up
-      ;; p/up
-      ;; p/up
-      ;; p/up
-      ;;p/right
+      p/down;
+      ;;p/up
       ;;p/down
-      ;;p/right
-      (clojure.pprint/pprint )
-      ;;p/value
+      ;;:current
+      ;;:value
+       ;;p/up
+      p/right
+      p/right
+      p/right
+      p/down
+      p/down
+
+      p/up
+      p/up
+      p/up
+      p/up
+
+      p/right
+      ;;(clojure.pprint/pprint )
+      p/current
       )
+
+
 
   (-> (make-fs-node "/")
       p/down
@@ -116,7 +130,7 @@
       p/right
       p/right
       p/right
-    p/current
+      p/current
     )
 
   )

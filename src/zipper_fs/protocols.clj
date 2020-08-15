@@ -37,9 +37,9 @@
     (-> (first (:right-nodes c))
         (assoc :up-node (:up-node c))
         (assoc :left-nodes (conj (:left-nodes c) (-> c
-                                                     (dissoc :right-nodes
-                                                             :left-nodes
-                                                             :up-node))))
+                                                     (assoc :right-nodes nil
+                                                             :left-nodes nil
+                                                             :up-node nil))))
         (assoc :right-nodes (rest (:right-nodes c))))))
 
 (defn cursor-left
@@ -50,9 +50,9 @@
     (-> (first (:left-nodes c))
         (assoc :up-node (:up-node c))
         (assoc :right-nodes (conj (:right-nodes c) (-> c
-                                                     (dissoc :right-nodes
-                                                             :left-nodes
-                                                             :up-node))))
+                                                     (assoc :right-nodes nil
+                                                             :left-nodes nil
+                                                             :up-node nil))))
         (assoc :left-nodes (rest (:left-nodes c))))
     #_(-> c
         (update :right-nodes conj (:current c))
@@ -60,14 +60,14 @@
         (assoc :left-nodes (rest (:left-nodes c))))))
 
 (defn cursor-up
-  ":current becomes :up-node and :down-node becomes the (dissoc c :up-node) because the :down-node doesn't need a reference to the :up-node."
+  ":current becomes :up-node and :down-node becomes the (assoc c :up-node nil) because the :down-node doesn't need a reference to the :up-node hence setting to nil"
   [c]
   (if (:up-node c)
     (-> (:up-node c)
         ;;(update :right-nodes conj (:current c))
         ;;(assoc :current (first (:left-nodes c)))
         ;;(assoc :left-nodes (rest (:left-nodes c)))
-        (assoc :down-node (dissoc c :up-node)) ;; same as c but without up
+        (assoc :down-node (assoc c :up-node nil)) ;; same as c but without up
         )))
 
 (defn cursor-down
@@ -78,7 +78,7 @@
         ;;(update :right-nodes conj (:current c))
         ;;(assoc :current (first (:left-nodes c)))
         ;;(assoc :left-nodes (rest (:left-nodes c)))
-        (assoc :up-node (dissoc c :down-node))
+        (assoc :up-node (assoc c :down-node nil))
         )))
 
 (comment
@@ -155,10 +155,10 @@
   (value [this])
   (current [this])
   (inspect [this])
+  (build [this])
   )
 
-(defrecord Leaf [value
-                 properties])
+(defrecord Entity [value])
 
 (defrecord Node [current
                  left-nodes right-nodes

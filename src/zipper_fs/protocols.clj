@@ -181,15 +181,14 @@
   base-implementation
   )
 
-;; Same as
-#_(extend-protocol NodeProtocol
-  Node
-  (inspect [this] this)
-  (current [this] (:current this))
-  (value   [this] (:value (:current this)))
-  (right   [this] (cursor-right this))
-  (left    [this] (cursor-left this))
-  (up      [this]  (cursor-up this))
-  (down    [this] (cursor-down this)))
+(defn build-insert-left
+  "Insert Node to the left"
+  [c el]
+  (insert-left c (build el)))
+
+(defn build-insert-right
+  "Insert Node to the right"
+  [c el]
+  (insert-right c (build el)))
 
 

@@ -23,11 +23,14 @@
       (assoc :down (fn [this]
                      (if (:down-node this)
                        (p/cursor-down this)
-                       (let [nodes (map p/build (get-in this [:current :value]))]
+                       (let [nodes (map p/build (get-in this [:current :value]))
+                             new-up-node (-> this
+                                             (assoc :down-node nil)
+                                             (update-in [:current :value] empty))]
                          (->SeqNode (:current (first nodes)) 
                                     (list) 
                                     (rest nodes) 
-                                    (assoc this :down-node nil)
+                                    new-up-node
                                     nil)))))))
 
 (defn make-list-node
@@ -56,17 +59,20 @@
 (comment
   
   (-> (p/build '(1 2 (3.0 3.1) [4.0, 4.1] "hey you" #{"setv1" "setv2"}))
-      ;;(p/build-insert-left "test")
-      ;;p/right
-      ;;(assoc :left-nodes nil)
-      ;;p/right
-      ;;p/right
       p/down
       p/right
+      ;;(assoc :left-nodes nil)
       p/right
+      ;;p/right
+      p/down
+      ;;(p/build-insert-left 0)
+      ;;p/left
+      ;;p/right
+      ;;p/right
+      ;;p/right
       ;;p/up
       
-      p/down
+      ;;p/down
       ;;:up-node
       ;;p/up
       ;; p/left
